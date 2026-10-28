@@ -1,0 +1,6 @@
+-r requirements.txt
+-r ai_services/requirements-base.txt
+anthropic>=0.40
+google-genai>=1.0
+pytest>=8
+pytest-django>=4.9

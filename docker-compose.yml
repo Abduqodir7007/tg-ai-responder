@@ -1,0 +1,94 @@
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: tg-ai-responder-app
+  env_file: .env
+  restart: unless-stopped
+  volumes:
+    - media:/app/media
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  web:
+    <<: *app
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+
+  telegram-listener:
+    <<: *app
+    command: python manage.py run_listener
+
+  worker:
+    <<: *app
+    command: celery -A config worker --loglevel=INFO --concurrency=${WORKER_CONCURRENCY:-4}
+
+  beat:
+    <<: *app
+    command: celery -A config beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
+
+  claude-service:
+    build:
+      context: .
+      dockerfile: ai_services/claude_service/Dockerfile
+    restart: unless-stopped
+    environment:
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      CLAUDE_DEFAULT_MODEL: ${CLAUDE_DEFAULT_MODEL:-claude-sonnet-5-5}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      VIDEO_MAX_FRAMES: ${VIDEO_MAX_FRAMES:-6}
+    volumes:
+      - whisper-models:/models
+    expose:
+      - "8000"
+
+  gemini-service:
+    build:
+      context: .
+      dockerfile: ai_services/gemini_service/Dockerfile
+    restart: unless-stopped
+    environment:
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      GEMINI_DEFAULT_MODEL: ${GEMINI_DEFAULT_MODEL:-gemini-2.5-flash}
+    expose:
+      - "8000"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  media:
+  postgres-data:
+  redis-data:
+  whisper-models:

@@ -1,0 +1,37 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:core_account_changelist' %}">Accounts</a>
+  &rsaquo; <a href="{% url 'admin:core_account_change' account.pk %}">{{ account }}</a>
+  &rsaquo; Connect
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <p>Status: <strong>{{ account.get_status_display }}</strong></p>
+  <ol>
+    <li{% if step == "phone" %} style="font-weight:bold"{% endif %}>Phone number</li>
+    <li{% if step == "code" %} style="font-weight:bold"{% endif %}>Login code from Telegram</li>
+    <li{% if step == "password" %} style="font-weight:bold"{% endif %}>2FA password (if enabled)</li>
+  </ol>
+  <form method="post">
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      {% for field in form %}
+      <div class="form-row">
+        {{ field.errors }}
+        {{ field.label_tag }} {{ field }}
+        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </fieldset>
+    <div class="submit-row">
+      <input type="submit" class="default" value="{% if step == 'phone' %}Send code{% elif step == 'code' %}Sign in{% else %}Submit password{% endif %}">
+      {% if step != "phone" %}<a href="?restart=1" class="button">Start over</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,3 @@
+-r ../requirements-base.txt
+anthropic>=0.40
+faster-whisper>=1.0
