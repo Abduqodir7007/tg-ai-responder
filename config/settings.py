@@ -125,9 +125,15 @@ AI_SERVICE_URLS = {
     "gemini": env("GEMINI_SERVICE_URL", "http://gemini-service:8000"),
 }
 AI_SERVICE_TIMEOUT = float(env_int("AI_SERVICE_TIMEOUT", 180))
+AI_RETRY_ATTEMPTS = int(env("AI_RETRY_ATTEMPTS", "2"))
+AI_RETRY_DELAY_SECONDS = float(env("AI_RETRY_DELAY_SECONDS", "2"))
+AI_FALLBACK_MODELS = {
+    "gemini": [m.strip() for m in env("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash,gemini-flash-latest").split(",") if m.strip()],
+    "claude": [m.strip() for m in env("CLAUDE_FALLBACK_MODELS", "").split(",") if m.strip()],
+}
 DEFAULT_MODELS = {
     "claude": env("CLAUDE_DEFAULT_MODEL", "claude-sonnet-5-5"),
-    "gemini": env("GEMINI_DEFAULT_MODEL", "gemini-3.8-flash"),
+    "gemini": env("GEMINI_DEFAULT_MODEL", "gemini-3.6-flash"),
 }
 TELEGRAM_OUTBOX_KEY = env("TELEGRAM_OUTBOX_KEY", "tg:outbox")
 LISTENER_ACCOUNT_SYNC_SECONDS = env_int("LISTENER_ACCOUNT_SYNC_SECONDS", 15)

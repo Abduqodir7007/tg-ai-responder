@@ -79,6 +79,10 @@ class AccountConnection:
         self.sent_ids: set[int] = set()
 
 
+OFFLINE_RETRIES = 12
+OFFLINE_RETRY_SECONDS = 10
+
+
 class ListenerService:
     def __init__(self):
         self.connections: dict[int, AccountConnection] = {}
@@ -211,6 +215,10 @@ class ListenerService:
             logger.warning("No live connection for command %s", command)
             if action == bus.SEND_MESSAGE:
                 await sync_to_async(handlers.mark_failed)(command["log_id"], "account_offline")
+            elif action == bus.BOOTSTRAP_DIALOGS and command.get("attempt", 0) < OFFLINE_RETRIES:
+                await asyncio.sleep(OFFLINE_RETRY_SECONDS)
+                retry = {**command, "attempt": command.get("attempt", 0) + 1}
+                await self.redis.rpush(settings.TELEGRAM_OUTBOX_KEY, json.dumps(retry))
             return
         try:
             if action == bus.SEND_MESSAGE:

@@ -1,18 +1,28 @@
 import json
 from dataclasses import dataclass, field
 
-from django.db.models import Q
+from django.db.models import F, Q
 
 from .media import image_part
 from .models import Account, Chat, ContactContext, GlobalSettings, MessageLog
 
 BASE_INSTRUCTIONS = (
-    "You are replying on behalf of the account owner in a private Telegram chat. "
-    "Write as the owner would: short, natural, human messages in the contact's language and tone. "
-    "Use the contact card and recent messages; do not invent facts or commitments. "
-    "If something needs the owner's personal decision, answer politely and say you will get back later. "
+    "You are the account owner replying in a private Telegram chat. The contact must not notice it is an AI.\n"
+    "Rules:\n"
+    "1. Always reply in the language the contact writes in (English to English, Russian to Russian). "
+    "Copy the owner's style from the examples: length, tone, punctuation; when replying in Uzbek also use the "
+    "owner's script (Cyrillic or Latin). Usually 1 short sentence. No emojis unless the owner uses them.\n"
+    "2. Answer the actual question using the contact card, the owner's other chats and the recent messages. "
+    "If the answer is there, state it concretely (names, versions, numbers).\n"
+    "3. Never claim you checked, sent, received or did something unless it is visible in the provided data. "
+    "Never invent statuses, dates, prices or promises.\n"
+    "4. If the needed fact is not in the data, ask one short clarifying question or say briefly that you will "
+    "answer a bit later. Do not repeat the same stalling phrase twice in a row.\n"
+    "5. Do not thank or apologise without a reason. Do not start with greetings if the conversation is ongoing.\n"
     "Return only the message text."
 )
+STYLE_EXAMPLES = 15
+OTHER_CHAT_MESSAGES = 20
 
 
 @dataclass
@@ -31,9 +41,53 @@ def recent_messages(chat: Chat, limit: int) -> list[MessageLog]:
     qs = (
         MessageLog.objects.filter(chat=chat)
         .filter(Q(direction=MessageLog.Direction.IN) | Q(status=MessageLog.Status.SENT))
-        .order_by("-created_at", "-id")[:limit]
+        .order_by(F("telegram_msg_id").desc(nulls_first=True), "-id")[:limit]
     )
     return list(reversed(list(qs)))
+
+
+def owner_style_examples(account: Account, limit: int = STYLE_EXAMPLES) -> list[str]:
+    qs = (
+        MessageLog.objects.filter(account=account, direction=MessageLog.Direction.OUT)
+        .exclude(source=MessageLog.Source.AI)
+        .exclude(text="")
+        .order_by(F("telegram_msg_id").desc(nulls_last=True), "-id")
+        .values_list("text", flat=True)[:limit]
+    )
+    return [text.strip()[:200] for text in qs if text.strip()]
+
+
+def other_chats_digest(chat: Chat, limit: int = OTHER_CHAT_MESSAGES) -> str:
+    lines = []
+    others = (
+        ContactContext.objects.filter(chat__account=chat.account)
+        .exclude(chat=chat)
+        .exclude(chat__list_status=Chat.ListStatus.BLACKLISTED)
+        .select_related("chat")
+    )
+    for other in others:
+        if other.summary:
+            lines.append(f"- {other.name or other.chat}: {other.summary[:300]}")
+    logs = (
+        MessageLog.objects.filter(account=chat.account)
+        .exclude(chat=chat)
+        .exclude(chat__list_status=Chat.ListStatus.BLACKLISTED)
+        .select_related("chat")
+        .order_by(F("telegram_msg_id").desc(nulls_last=True), "-id")[:limit]
+    )
+    recent = []
+    for log in reversed(list(logs)):
+        text = log.as_text()
+        if not text:
+            continue
+        who = "owner" if log.direction == MessageLog.Direction.OUT else "contact"
+        recent.append(f"- [{log.chat}] {who}: {text[:200]}")
+    parts = []
+    if lines:
+        parts.append("Other contacts:\n" + "\n".join(lines))
+    if recent:
+        parts.append("Latest messages in the owner's other chats:\n" + "\n".join(recent))
+    return "\n\n".join(parts)
 
 
 def contact_card(context: ContactContext) -> str:
@@ -47,7 +101,13 @@ def build_system_prompt(account: Account, context: ContactContext) -> str:
     sections = [BASE_INSTRUCTIONS]
     if account.persona_prompt.strip():
         sections.append("Owner persona and rules:\n" + account.persona_prompt.strip())
+    examples = owner_style_examples(account)
+    if examples:
+        sections.append("Owner's real messages (style examples):\n" + "\n".join(f"- {e}" for e in examples))
     sections.append("Contact card (stored context):\n" + contact_card(context))
+    digest = other_chats_digest(context.chat) if context.chat_id else ""
+    if digest:
+        sections.append(digest)
     return "\n\n".join(sections)
 
 

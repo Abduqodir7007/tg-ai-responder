@@ -28,7 +28,7 @@ from ai_services.common.security import verify_internal_token
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = os.environ.get("GEMINI_DEFAULT_MODEL", "gemini-3.8-flash")
+DEFAULT_MODEL = os.environ.get("GEMINI_DEFAULT_MODEL", "gemini-3.6-flash")
 SUMMARY_MAX_TOKENS = int(os.environ.get("SUMMARY_MAX_TOKENS", "2000"))
 
 app = FastAPI(title="gemini-service")
