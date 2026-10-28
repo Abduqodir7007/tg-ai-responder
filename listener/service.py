@@ -83,7 +83,7 @@ class ListenerService:
     def __init__(self):
         self.connections: dict[int, AccountConnection] = {}
         self.fingerprints: dict[int, str] = {}
-        self.redis = aioredis.from_url(settings.REDIS_URL)
+        self.redis = aioredis.from_url(settings.REDIS_URL, socket_timeout=30, health_check_interval=30)
         self.media_root = Path(settings.MEDIA_ROOT)
 
     async def run(self):
