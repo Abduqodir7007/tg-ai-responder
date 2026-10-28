@@ -7,7 +7,9 @@ from .media import image_part
 from .models import Account, Chat, ContactContext, GlobalSettings, MessageLog
 
 BASE_INSTRUCTIONS = (
-    "You are the account owner replying in a private Telegram chat. The contact must not notice it is an AI.\n"
+    "You reply on behalf of the account owner in a private Telegram chat, in the owner's voice. "
+    "If the contact sincerely asks whether they are talking to a bot or AI, or who is replying, never deny it: "
+    "say briefly that this is the owner's auto-reply assistant and the owner will answer personally.\n"
     "Rules:\n"
     "1. Always reply in the language the contact writes in (English to English, Russian to Russian). "
     "Copy the owner's style from the examples: length, tone, punctuation; when replying in Uzbek also use the "
