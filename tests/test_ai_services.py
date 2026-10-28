@@ -194,7 +194,7 @@ def test_gemini_generate_maps_roles_and_media(gemini):
     assert response.json()["input_tokens"] == 21
     assert keys == ["user-key"]
     call = fake.calls[0]
-    assert call["model"] == "gemini-2.5-flash"
+    assert call["model"] == "gemini-3.8-flash"
     assert [content.role for content in call["contents"]] == ["user", "model", "user"]
     image_part = call["contents"][2].parts[0]
     assert image_part.inline_data.data == b"\xff\xd8jpeg"

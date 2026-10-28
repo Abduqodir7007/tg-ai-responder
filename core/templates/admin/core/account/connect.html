@@ -1,37 +1,35 @@
 {% extends "admin/base_site.html" %}
 
-{% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="{% url 'admin:index' %}">Home</a>
-  &rsaquo; <a href="{% url 'admin:core_account_changelist' %}">Accounts</a>
-  &rsaquo; <a href="{% url 'admin:core_account_change' account.pk %}">{{ account }}</a>
-  &rsaquo; Connect
-</div>
-{% endblock %}
+{% block breadcrumbs %}{% endblock %}
 
 {% block content %}
-<div id="content-main">
-  <p>Status: <strong>{{ account.get_status_display }}</strong></p>
-  <ol>
-    <li{% if step == "phone" %} style="font-weight:bold"{% endif %}>Phone number</li>
-    <li{% if step == "code" %} style="font-weight:bold"{% endif %}>Login code from Telegram</li>
-    <li{% if step == "password" %} style="font-weight:bold"{% endif %}>2FA password (if enabled)</li>
-  </ol>
-  <form method="post">
-    {% csrf_token %}
-    <fieldset class="module aligned">
+<div class="max-w-xl">
+  <div class="bg-white border border-base-200 rounded-default shadow-xs p-6 dark:bg-base-900 dark:border-base-800">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="font-semibold text-lg text-font-important-light dark:text-font-important-dark">{{ account }}</h2>
+      <span class="text-xs font-semibold uppercase px-2 py-1 rounded-default bg-base-100 dark:bg-base-800">{{ account.get_status_display }}</span>
+    </div>
+    <ol class="flex gap-2 mb-6 text-sm">
+      <li class="flex-1 text-center px-2 py-2 rounded-default {% if step == 'phone' %}bg-primary-600 text-white font-semibold{% else %}bg-base-100 dark:bg-base-800{% endif %}">1. Telefon</li>
+      <li class="flex-1 text-center px-2 py-2 rounded-default {% if step == 'code' %}bg-primary-600 text-white font-semibold{% else %}bg-base-100 dark:bg-base-800{% endif %}">2. Kod</li>
+      <li class="flex-1 text-center px-2 py-2 rounded-default {% if step == 'password' %}bg-primary-600 text-white font-semibold{% else %}bg-base-100 dark:bg-base-800{% endif %}">3. 2FA parol</li>
+    </ol>
+    <form method="post" class="flex flex-col gap-4">
+      {% csrf_token %}
       {% for field in form %}
-      <div class="form-row">
-        {{ field.errors }}
-        {{ field.label_tag }} {{ field }}
-        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+      <div class="flex flex-col gap-2">
+        <label for="{{ field.id_for_label }}" class="font-semibold text-sm text-font-important-light dark:text-font-important-dark">{{ field.label }}</label>
+        <input type="{% if step == 'password' %}password{% else %}text{% endif %}" name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default_if_none:'' }}" autocomplete="off" class="border border-base-200 bg-white font-medium rounded-default shadow-xs text-sm px-3 py-2 w-full focus:outline-2 focus:outline-primary-600 dark:bg-base-900 dark:border-base-700">
+        {% if field.help_text %}<p class="text-xs text-base-500">{{ field.help_text }}</p>{% endif %}
+        {% for error in field.errors %}<p class="text-xs text-red-600">{{ error }}</p>{% endfor %}
       </div>
       {% endfor %}
-    </fieldset>
-    <div class="submit-row">
-      <input type="submit" class="default" value="{% if step == 'phone' %}Send code{% elif step == 'code' %}Sign in{% else %}Submit password{% endif %}">
-      {% if step != "phone" %}<a href="?restart=1" class="button">Start over</a>{% endif %}
-    </div>
-  </form>
+      <div class="flex items-center gap-3 pt-2">
+        <button type="submit" class="bg-primary-600 text-white font-medium px-4 py-2 rounded-default">{% if step == 'phone' %}Kod yuborish{% elif step == 'code' %}Kirish{% else %}Parolni yuborish{% endif %}</button>
+        {% if step != "phone" %}<a href="?restart=1" class="font-medium text-sm text-primary-600">Boshidan boshlash</a>{% endif %}
+        <a href="{% url 'admin:core_account_change' account.pk %}" class="font-medium text-sm text-base-500 ml-auto">Orqaga</a>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

@@ -1,16 +1,23 @@
 from django.contrib import admin, messages
+from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group, User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
 
 from . import telegram_login
+from unfold.admin import ModelAdmin, StackedInline, TabularInline
+from unfold.decorators import display
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
+
 from .forms import AccountForm, CodeForm, PasswordForm, PhoneForm, ProviderConfigForm
 from .models import Account, Chat, ContactContext, GlobalSettings, MessageLog, ProviderConfig
 from .tasks import rebootstrap_chat, start_bootstrap, summarize_chat
 
 
 @admin.register(GlobalSettings)
-class GlobalSettingsAdmin(admin.ModelAdmin):
+class GlobalSettingsAdmin(ModelAdmin):
     list_display = ("__str__", "kill_switch", "default_provider", "updated_at")
     fieldsets = (
         ("Safety", {"fields": ("kill_switch", "burst_window_seconds", "reply_delay_min_seconds",
@@ -33,7 +40,7 @@ class GlobalSettingsAdmin(admin.ModelAdmin):
 
 
 @admin.register(ProviderConfig)
-class ProviderConfigAdmin(admin.ModelAdmin):
+class ProviderConfigAdmin(ModelAdmin):
     form = ProviderConfigForm
     list_display = ("provider", "masked_key", "model_name", "enabled", "updated_at")
     readonly_fields = ("masked_key",)
@@ -47,7 +54,7 @@ class ProviderConfigAdmin(admin.ModelAdmin):
         return obj.effective_model
 
 
-class ChatInline(admin.TabularInline):
+class ChatInline(TabularInline):
     model = Chat
     extra = 0
     fields = ("title", "username", "chat_type", "auto_reply_enabled", "list_status", "messages_since_summary")
@@ -57,9 +64,9 @@ class ChatInline(admin.TabularInline):
 
 
 @admin.register(Account)
-class AccountAdmin(admin.ModelAdmin):
+class AccountAdmin(ModelAdmin):
     form = AccountForm
-    list_display = ("name", "phone", "status", "auto_reply_enabled", "provider_label", "bootstrap_status",
+    list_display = ("name", "phone", "status_badge", "auto_reply_enabled", "provider_label", "bootstrap_badge",
                     "connect_link")
     list_filter = ("status", "auto_reply_enabled", "provider")
     readonly_fields = ("masked_hash", "status", "telegram_user_id", "telegram_username", "bootstrap_status",
@@ -78,6 +85,20 @@ class AccountAdmin(admin.ModelAdmin):
                                                "bootstrap_status", "bootstrapped_at", "last_error"]}))
         return base
 
+    @display(description="Status", label={
+        Account.Status.CONNECTED: "success",
+        Account.Status.CODE_SENT: "warning",
+        Account.Status.PASSWORD_NEEDED: "warning",
+        Account.Status.ERROR: "danger",
+        Account.Status.DISCONNECTED: "danger",
+    })
+    def status_badge(self, obj):
+        return obj.status, obj.get_status_display()
+
+    @display(description="Bootstrap", label=True)
+    def bootstrap_badge(self, obj):
+        return obj.get_bootstrap_status_display()
+
     @admin.display(description="API hash")
     def masked_hash(self, obj):
         return obj.masked_api_hash or "-"
@@ -91,8 +112,11 @@ class AccountAdmin(admin.ModelAdmin):
         if not obj.pk:
             return "-"
         label = "Reconnect" if obj.status == Account.Status.CONNECTED else "Connect"
-        return format_html('<a class="button" href="{}">{}</a>', reverse("admin:core_account_connect", args=[obj.pk]),
-                           label)
+        return format_html(
+            '<a class="bg-primary-600 text-white font-medium px-3 py-1.5 rounded-default inline-block" href="{}">{}</a>',
+            reverse("admin:core_account_connect", args=[obj.pk]),
+            label,
+        )
 
     def get_urls(self):
         custom = [
@@ -158,13 +182,13 @@ class AccountAdmin(admin.ModelAdmin):
         queryset.update(status=Account.Status.DISCONNECTED)
 
 
-class ContactContextInline(admin.StackedInline):
+class ContactContextInline(StackedInline):
     model = ContactContext
     extra = 0
 
 
 @admin.register(Chat)
-class ChatAdmin(admin.ModelAdmin):
+class ChatAdmin(ModelAdmin):
     list_display = ("__str__", "account", "chat_type", "auto_reply_enabled", "list_status", "messages_since_summary",
                     "last_message_at")
     list_filter = ("account", "chat_type", "auto_reply_enabled", "list_status")
@@ -208,16 +232,16 @@ class ChatAdmin(admin.ModelAdmin):
 
 
 @admin.register(ContactContext)
-class ContactContextAdmin(admin.ModelAdmin):
+class ContactContextAdmin(ModelAdmin):
     list_display = ("chat", "name", "relationship", "language", "last_summarized_msg_id", "updated_at")
     search_fields = ("name", "summary", "chat__title", "chat__username")
     list_filter = ("chat__account",)
 
 
 @admin.register(MessageLog)
-class MessageLogAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "chat", "direction", "source", "media_type", "short_text", "status", "provider",
-                    "input_tokens", "output_tokens")
+class MessageLogAdmin(ModelAdmin):
+    list_display = ("created_at", "chat", "direction_badge", "source", "media_type", "short_text", "status",
+                    "provider", "input_tokens", "output_tokens")
     list_filter = ("account", "direction", "source", "status", "media_type", "provider")
     search_fields = ("text", "transcript", "chat__title", "chat__username")
     readonly_fields = [field.name for field in MessageLog._meta.fields]
@@ -226,7 +250,27 @@ class MessageLogAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    @display(description="Direction", label={"in": "info", "out": "success"})
+    def direction_badge(self, obj):
+        return obj.direction, obj.get_direction_display()
+
     @admin.display(description="Text")
     def short_text(self, obj):
         value = obj.as_text()
         return value if len(value) <= 80 else value[:77] + "..."
+
+
+admin.site.unregister(User)
+admin.site.unregister(Group)
+
+
+@admin.register(User)
+class UserAdmin(BaseUserAdmin, ModelAdmin):
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
+
+
+@admin.register(Group)
+class GroupAdmin(BaseGroupAdmin, ModelAdmin):
+    pass

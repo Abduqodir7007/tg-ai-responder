@@ -108,7 +108,7 @@ Django avtomatik SQLite ishlatadi.
 
 1. **Provider configs** - `claude` va `gemini` uchun API kalitni kiriting. Kalit Fernet bilan shifrlanib bazaga
    yoziladi, ro'yxatda faqat niqoblangan ko'rinishda chiqadi (`sk-a********abcd`). Model bo'sh bo'lsa standart
-   ishlatiladi: `claude-sonnet-5-5` (variant: `claude-opus-5-5`) va `gemini-2.5-flash`.
+   ishlatiladi: `claude-sonnet-5-5` (variant: `claude-opus-5-5`) va `gemini-3.8-flash`.
 2. **Global settings** - kill switch, standart provayder, rate limit, kechikishlar, `resummarize_every_n_messages`,
    bootstrap limitlari.
 3. **Accounts** - akkaunt qo'shish va ulash (pastda), auto-reply ni pauza/davom ettirish, persona prompt.

@@ -47,7 +47,7 @@ def test_connect_wizard_renders_phone_step(admin_client_logged, account):
     response = admin_client_logged.get(reverse("admin:core_account_connect", args=[account.pk]))
 
     assert response.status_code == 200
-    assert "Send code" in response.content.decode()
+    assert "Kod yuborish" in response.content.decode()
 
 
 def test_global_settings_redirects_to_singleton(admin_client_logged):

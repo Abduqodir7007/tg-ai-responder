@@ -26,6 +26,8 @@ ALLOWED_HOSTS = [h.strip() for h in env("DJANGO_ALLOWED_HOSTS", "*").split(",") 
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in env("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 
 INSTALLED_APPS = [
+    "unfold",
+    "unfold.contrib.filters",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -125,7 +127,7 @@ AI_SERVICE_URLS = {
 AI_SERVICE_TIMEOUT = float(env_int("AI_SERVICE_TIMEOUT", 180))
 DEFAULT_MODELS = {
     "claude": env("CLAUDE_DEFAULT_MODEL", "claude-sonnet-5-5"),
-    "gemini": env("GEMINI_DEFAULT_MODEL", "gemini-2.5-flash"),
+    "gemini": env("GEMINI_DEFAULT_MODEL", "gemini-3.8-flash"),
 }
 TELEGRAM_OUTBOX_KEY = env("TELEGRAM_OUTBOX_KEY", "tg:outbox")
 LISTENER_ACCOUNT_SYNC_SECONDS = env_int("LISTENER_ACCOUNT_SYNC_SECONDS", 15)
@@ -136,4 +138,54 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
+}
+
+
+UNFOLD = {
+    "SITE_TITLE": "TG AI Responder",
+    "SITE_HEADER": "TG AI Responder",
+    "SITE_SYMBOL": "smart_toy",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": False,
+    "BORDER_RADIUS": "8px",
+    "COLORS": {
+        "primary": {
+            "50": "oklch(97.7% .014 308.299)",
+            "100": "oklch(94.6% .033 307.174)",
+            "200": "oklch(90.2% .063 306.703)",
+            "300": "oklch(82.7% .119 306.383)",
+            "400": "oklch(71.4% .203 305.504)",
+            "500": "oklch(62.7% .265 303.9)",
+            "600": "oklch(55.8% .288 302.321)",
+            "700": "oklch(49.6% .265 301.924)",
+            "800": "oklch(43.8% .218 303.724)",
+            "900": "oklch(38.1% .176 304.987)",
+            "950": "oklch(29.1% .149 302.717)",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": "Telegram",
+                "separator": True,
+                "items": [
+                    {"title": "Akkauntlar", "icon": "account_circle", "link": "/admin/core/account/"},
+                    {"title": "Chatlar", "icon": "forum", "link": "/admin/core/chat/"},
+                    {"title": "Kontekstlar", "icon": "psychology", "link": "/admin/core/contactcontext/"},
+                    {"title": "Xabarlar jurnali", "icon": "receipt_long", "link": "/admin/core/messagelog/"},
+                ],
+            },
+            {
+                "title": "Sozlamalar",
+                "separator": True,
+                "items": [
+                    {"title": "AI provayderlar", "icon": "key", "link": "/admin/core/providerconfig/"},
+                    {"title": "Umumiy sozlamalar", "icon": "tune", "link": "/admin/core/globalsettings/"},
+                    {"title": "Foydalanuvchilar", "icon": "group", "link": "/admin/auth/user/"},
+                ],
+            },
+        ],
+    },
 }

@@ -11,7 +11,7 @@ from core.models import GlobalSettings, ProviderConfig
 def service_urls(settings):
     settings.AI_SERVICE_URLS = {"claude": "http://claude-service:8000", "gemini": "http://gemini-service:8000"}
     settings.INTERNAL_SERVICE_TOKEN = "internal-test-token"
-    settings.DEFAULT_MODELS = {"claude": "claude-sonnet-5-5", "gemini": "gemini-2.5-flash"}
+    settings.DEFAULT_MODELS = {"claude": "claude-sonnet-5-5", "gemini": "gemini-3.8-flash"}
 
 
 def capture_transport(captured, status=200):
